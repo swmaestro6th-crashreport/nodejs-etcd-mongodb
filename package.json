@@ -1,0 +1,7 @@
+{
+  "name" : "etcd-sample",
+  "dependencies" : {
+    "node-etcd" : "*",
+    "async" : "*"
+  }
+}
