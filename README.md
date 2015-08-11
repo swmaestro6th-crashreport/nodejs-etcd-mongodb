@@ -2,12 +2,12 @@
 
 ## Introduction
 
-서비스의 서버는 Down되어서는 안된다. 설령 Down이 된다고 하더라도 빠른 시간 안에 복구할 수 있어야한다. 실제로 런칭된 서비스 대부분이 이러한 시스템을 가지고 있다. 왜냐 하면, 서버가 Down되는 시간이 길어지면 길어질수록 사용자의 Active는 줄어들기 때문이다. 스타트업의 경우엔 치명적인 부분이다.
+서비스의 서버는 High Avality를 유지해야 한다.설령 Down이 된다고 하더라도 빠른 시간 안에 복구할 수 있어야한다. 
 
-이 글에서는 etcd 서버를 구축한 후 MongoDB 서버가 죽었을 때 다시 되살려주는 **Watcher Instance**를 개발한다. 이를 통하여 서버 Down이 없는 서버를 개발해보는 것이 목적이다.
+이 글에서는 etcd 를 통해 MongoDB 서버가 죽었을 때 다시 되살려주는 **Watcher Instance**를 개발한다. 이를 통하여 서버 Downtime을 최소화 하는 것이 목적이다.
 
 ## Why etcd?
-Apache ZooKeeper로 서버를 구축하여 **Watcher Instance**를 개발할 수 있지만 더 간단한 구조이면서도 좋은 성능을 가진 etcd를 이용해본다. 단점으로는 자료가 얼마 없다. 구글에 검색을 해보아도 자료는 정말로 얼마 없다. 빠르게 구현하길 원한다면 자료가 많은 zk가 적합하다..
+Apache ZooKeeper로 서버를 구축하여 **Watcher Instance**를 개발할 수 있지만 더 간단한 구조이면서도 좋은 성능을 가진 etcd를 이용해본다. 잘 정리된 자료가 없다. 
 	
 ## etcd?
 
@@ -18,7 +18,7 @@ etcd는 Consistent한 Key-Value 저장소이다.
 * Fast : 하나의 Instance 당 1000s의 쓰기 연산을 할 수 있다.
 * Reliable : Raft라는 알고리즘이 사용되고 있다.
 
-etcd는 **Go 언어**로 작성되어졌다. **Brew**와 같은 툴로 설치하는 것이 아닌 소스 코드를 **Build**하고 사용하려면 Go 언어를 설치해야한다.
+etcd는 **Go 언어**로 작성되어졌다. **Brew**로 설치할 수 있으나닌 소스 코드를 **Build**하고 사용하려면 Go 언어를 설치해야한다.
 
 * TIP : MongoDB처럼 JSON Document를 저장하기 위해서는 JSON을 String으로 변환해야한다. Node.js에서는 JSON.Stringify를 이용하면 된다.
 
