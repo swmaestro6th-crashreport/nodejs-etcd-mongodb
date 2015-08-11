@@ -18,7 +18,7 @@ etcd는 Consistent한 Key-Value 저장소이다.
 * Fast : 하나의 Instance 당 1000s의 쓰기 연산을 할 수 있다.
 * Reliable : Raft라는 알고리즘이 사용되고 있다.
 
-etcd는 **Go 언어**로 작성되어졌다. **Brew**로 설치할 수 있으나닌 소스 코드를 **Build**하고 사용하려면 Go 언어를 설치해야한다.
+etcd는 **Go 언어**로 작성되어졌다. **Brew**로 설치할 수 있으나 소스 코드를 **Build**하고 사용하려면 Go 언어를 설치해야한다.
 
 * TIP : MongoDB처럼 JSON Document를 저장하기 위해서는 JSON을 String으로 변환해야한다. Node.js에서는 JSON.Stringify를 이용하면 된다.
 
