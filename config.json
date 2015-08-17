@@ -1,12 +1,16 @@
 {
   "etcd" : {
-    "master" : {
+    "replSet1" : {
       "key" : "/services/db1",
       "mongod" : "mongod --port 20000 --dbpath /data/db/replSet1 --replSet Mongo_study"
     }, 
-    "slave" :  {
+    "replSet2" :  {
       "key" : "/services/db2",
       "mongod" : "mongod --port 30000 --dbpath /data/db/replSet2 --replSet Mongo_study"
+    },
+    "replSet3" :  {
+      "key" : "/services/db3",
+      "mongod" : "mongod --port 40000 --dbpath /data/db/replSet3 --replSet Mongo_study"
     }
   }
 }
