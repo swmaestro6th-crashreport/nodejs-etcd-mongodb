@@ -2,10 +2,6 @@
   "name" : "etcd-sample",
   "dependencies" : {
     "node-etcd" : "*",
-    "async" : "*",
-    "socket.io-client" : "*",
-    "socket.io" : "*",
-    "mongodb" : "*",
-    "express" : "*"
+    "async" : "*"
   }
 }
