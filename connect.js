@@ -10,7 +10,7 @@ var api = {
     },
 
     connect: function (etcd, config, cb) {
-      etcd.get(config.key, function(err, value) {
+      etcd.get(config.key, function (err, value) {
           etcd.set(config.key, config.mongod, function() {
               exec(config.mongod, cb);
           });

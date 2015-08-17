@@ -1,5 +1,4 @@
 var api = require('./connect'),
-	watch = require('./watcher');
 	Etcd = require('node-etcd'),
     config = require('./config');
 
@@ -18,11 +17,3 @@ api.connect(etcd, config.etcd.slave, function () {
 		api.setup(etcd, config.etcd.slave)
 	});
 });
-
-watch.del(config.etcd.master, function () {
-	console.log('etcd -> reloaded mongodb server port : 20000')
-});
-
-watch.del(config.etcd.slave, function () {
-	console.log('etcd -> reloaded mongodb server port : 30000')
-})
