@@ -1,27 +1,12 @@
 {
-  "db" : [
-  	{
-  		"name" : "primary",
-  		"hostname" : "127.0.0.1",
-  		"port" : "20000"
-  	},
-  	{
-  		"name" : "secondary1",
-  		"hostname" : "127.0.0.1",
-  		"port" : "30000"
-  	},
-  	{
-  		"name" : "secondary2",
-  		"hostname" : "127.0.0.1",
-  		"port" : "40000"
-  	}
-  ],
-
   "etcd" : {
-    "key1" : "/services/db",
-    "key2" : "/services/db2"
-  },
-
-  "mongod1" : "mongod --port 20000 --dbpath /data/db/replSet1 --replSet Mongo_study",
-  "mongod2" : "mongod --port 30000 --dbpath /data/db/replSet2 --replSet Mongo_study"
+    "master" : {
+      "key" : "/services/db",
+      "mongod" : "mongod --port 20000 --dbpath /data/db/replSet1 --replSet Mongo_study"
+    }, 
+    "slave" :  {
+      "key" : "/services/db2",
+      "mongod" : "mongod --port 30000 --dbpath /data/db/replSet2 --replSet Mongo_study"
+    }
+  }
 }

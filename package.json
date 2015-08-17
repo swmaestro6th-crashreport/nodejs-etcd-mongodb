@@ -3,6 +3,9 @@
   "dependencies" : {
     "node-etcd" : "*",
     "async" : "*",
-    "mongo-oplog" : "*"
+    "socket.io-client" : "*",
+    "socket.io" : "*",
+    "mongodb" : "*",
+    "express" : "*"
   }
 }
