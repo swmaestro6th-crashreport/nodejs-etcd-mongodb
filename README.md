@@ -149,13 +149,38 @@ Key에 해당하는 Value가 출력된다.
 2. notify -> MongoDB 서버가 Down된 것을 감지한 후, etcd에 있던 설정을 바꾸는 역할을 한다. 이것을 통해 Watcher Instance에서는 MongoDB가 Down된 것을 알아차리고 서버를 재가동한다.
 3. setup -> MongoDB 서버를 재가동한 후, 새로운 서버 설정을 etcd에 생성한다.
 
+위에 작성한 모듈을 가지고 서버를 초기화하는 코드를 app.js에 작성한다.
 
-이제 watcher.js 코드를 작성해본다. 
+	var api = require('./connect'),
+		Etcd = require('node-etcd'),
+    	config = require('./config');
+
+	console.log('Etcd : Server started');
+
+	var etcd = new Etcd();
+
+	api.connect(etcd, config.etcd.replSet1, function () {
+		api.notify(etcd, config.etcd.replSet1, function (err, data) {
+		})
+	});
+
+	api.connect(etcd, config.etcd.replSet2, function () {
+		api.notify(etcd, config.etcd.replSet2, function (err, data) {
+		});
+	});
+	
+	api.connect(etcd, config.etcd.replSet3, function () {
+		api.notify(etcd, config.etcd.replSet3, function (err, data) {
+		});
+	});
+
+이제 MongoDB 서버를 감시하며 다시 되살리는 Watcher를 작성해본다.
 
 	$ watcher.js
 	
 	var Etcd = require('node-etcd'),
     exec = require('child_process').exec,
+    api = require('./connect'),
     config = require('./config');
 
 	var etcd = new Etcd();
@@ -168,26 +193,26 @@ Key에 해당하는 Value가 출력된다.
 	watcher.machine3 = etcd.watcher(config.etcd.replSet3.key);
 
 	watcher.machine1.on('delete', function set (data) {
-		console.log("delete : " + data);
+		console.log('etcd -> reloaded mongodb server port : 20000')
 		exec(config.etcd.replSet1.mongod, function (err, stdout, stderr) {
 			console.log('etcd -> reloaded mongodb server port : 20000')
-			setTimeout(set, 1);
+			api.setup(etcd, config.etcd.replSet1)
 		});
 	});		
 
 	watcher.machine2.on('delete', function set (data) {
-		console.log("delete : " + data);
+		console.log('etcd -> reloaded mongodb server port : 30000')
 		exec(config.etcd.replSet2.mongod, function (err, stdout, stderr) {
 			console.log('etcd -> reloaded mongodb server port : 30000')
-			setTimeout(set, 1);
+			api.setup(etcd, config.etcd.replSet2)
 		});
 	});	
 
 	watcher.machine3.on('delete', function set (data) {
-		console.log("delete : " + data);
+		console.log('etcd -> reloaded mongodb server port : 40000')
 		exec(config.etcd.replSet3.mongod, function (err, stdout, stderr) {
 			console.log('etcd -> reloaded mongodb server port : 40000')
-			setTimeout(set, 1);
+			api.setup(etcd, config.etcd.replSet3)
 		});
 	});	
 	
