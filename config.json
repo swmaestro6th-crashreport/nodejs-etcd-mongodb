@@ -1,4 +1,10 @@
 {
+  "master" : {
+    "key" : "/services/etcd",
+    "host" : "localhost:4001",
+    "etcd" : "etcd"
+  },
+
   "etcd" : {
     "replSet1" : {
       "key" : "/services/db1",
