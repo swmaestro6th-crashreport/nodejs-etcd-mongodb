@@ -7,19 +7,16 @@ console.log('Etcd : Server started');
 var etcd = new Etcd();
 
 api.connect(etcd, config.etcd.replSet1, function () {
-	api.notify(etcd, config.etcd.replSet1, function () {
-		api.setup(etcd, config.etcd.replSet1)
+	api.notify(etcd, config.etcd.replSet1, function (err, data) {
 	})
 });
 
 api.connect(etcd, config.etcd.replSet2, function () {
-	api.notify(etcd, config.etcd.replSet2, function () {
-		api.setup(etcd, config.etcd.replSet2)
+	api.notify(etcd, config.etcd.replSet2, function (err, data) {
 	});
 });
 
 api.connect(etcd, config.etcd.replSet3, function () {
-	api.notify(etcd, config.etcd.replSet3, function () {
-		api.setup(etcd, config.etcd.replSet3)
+	api.notify(etcd, config.etcd.replSet3, function (err, data) {
 	});
 });

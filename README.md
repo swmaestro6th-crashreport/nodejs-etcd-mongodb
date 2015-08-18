@@ -1,8 +1,8 @@
-#Automatic Server-Side with etcd and Node.js and MongoDB
+#Auto-Reovery System Server-Side with etcd and Node.js and MongoDB
 
 ## Introduction
 
-서비스의 서버는 High Avality를 유지해야 한다.설령 Down이 된다고 하더라도 빠른 시간 안에 복구할 수 있어야한다. 
+서비스의 서버는 High Availability를 유지해야 한다. 설령 Down이 된다고 하더라도 빠른 시간 안에 복구할 수 있어야한다. 
 
 이 글에서는 etcd 를 통해 MongoDB 서버가 죽었을 때 다시 되살려주는 **Watcher Instance**를 개발한다. 이를 통하여 서버 Downtime을 최소화 하는 것이 목적이다.
 
@@ -28,7 +28,7 @@ etcd는 **Go 언어**로 작성되어졌다. **Brew**로 설치할 수 있으나
 	2. Node.js
 	3. MongoDB (Option)
 
-## Use etcdctl, Node.js for Automatic Server-Side
+## Basic usage of etcd
 
 etcd를 사용하기 위해서, 우리는 Key로 Service를 표현해야하며 Value는 JSON 문서 형식으로 Service에 필요한 유용한 정보들을 표현할 수 있다. 예를 들면, Hostname, Port, Pid(Process Id), createdNodeIndex 등이 존재한다.
 
@@ -40,13 +40,17 @@ etcd를 사용하기 위해서, 우리는 Key로 Service를 표현해야하며 V
 	$ etcdctl ls /services
 	/services/server
 	
-	$ etcdctl get /services/server
+	$ etcdctl get /services/db
 	{"hostname": "127.0.0.1", "port": 3000}
 	
+
+## Use etcdctl, Node.js and MongoDB for Auto-Reovery System
 
 이제 Node.js로 코드를 작성해야한다. Node.js에서 etcd를 사용하기 위해서는 [node-etcd](https://github.com/stianeikeland/node-etcd)를 사용하면 된다.
 
 node-etcd의 set을 이용하여 Key를 생성할 수 있다. 
+	
+	$ index.js
 	
 	var Etcd = require('node-etcd');    
 	var etcd = new Etcd();
@@ -54,16 +58,13 @@ node-etcd의 set을 이용하여 Key를 생성할 수 있다.
 	etcd.set(key, JSON.stringify({ hostname: 	'127.0.0.1', port: '3000', pid: process.pid}), 
 		function () {});
 		
-	Options에 { wait : true }를 하면 etcdctl을 이용하여
-	watcher를 실행할 수 있다.
-		
 위와 같이 코드를 작성해보면 서버를 실행시켜본다.
 
 	$ node index
 	
 	{ action: 'set',
   		node: 
-  			{ key: '/services/db',
+  			{ key: 'key',
      		  value: '{"hostname":"127.0.0.1","port":"3000","pid":2174}',
      		  modifiedIndex: 40,
      		  createdIndex: 40 }
@@ -71,51 +72,135 @@ node-etcd의 set을 이용하여 Key를 생성할 수 있다.
     
 성공적으로 생성된 것을 볼 수 있다. 이제 생성된 Key에 해당하는 Value를 찾아보자. 매우 간단하다.
 
-	$ node index
+	$ index.js
 	
 	etcd.get(key, function (err, value)) {
 		console.log(value);
 	}
 
-Key에 해당하는 Value가 출력된다. 이제 따로 config에 설정들을 분리시켜주자. 
+Key에 해당하는 Value가 출력된다. 
 
-	config.json
+	$ node index
 	
-	"mongod" : "mongod --port 20000 --dbpath /data/db/rs1--replSet master
+	{ action: 'get',
+  		node: 
+  			{ key: 'key',
+     		  value: '{"hostname":"127.0.0.1","port":"3000","pid":2174}',
+     		  modifiedIndex: 40,
+     		  createdIndex: 40 }
+    }
 
-따로 Watcher.js를 생성하여 서버 상태를 봐주는 코드를 작성해보도록 하자.
+이제 본격적으로 MongoDB 서버가 Down되었을 때 다시 살려주는 **Watcher Instance**를 개발해보자. 일단 config.json을 생성하여 설정들을 분리시켜준다.
 
+	$ config.json
+	
+	{
+  		"etcd" : {
+    		"replSet1" : {
+      			"key" : "/services/db1",
+      			"mongod" : "mongod --port 20000 --dbpath /data/db/replSet1 --replSet Mongo_study"
+    		}, 
+    		"replSet2" :  {
+      			"key" : "/services/db2",
+      			"mongod" : "mongod --port 30000 --dbpath /data/db/replSet2 --replSet Mongo_study"
+    		},
+    		"replSet3" :  {
+      			"key" : "/services/db3",
+      			"mongod" : "mongod --port 40000 --dbpath /data/db/replSet3 --replSet Mongo_study"
+    		}
+	  }
+	}
+	
+위의 코드는 Mongod의 설정 코드들이다. 이제 etcd 서버를 초기화하는 코드를 작성해보자.
+
+	$ connect.js
+	
 	var Etcd = require('node-etcd'),
-    	exec = require('child_process').exec,
-    	config = require('./config');
-
-	var etcd = new Etcd();
+    	exec = require('child_process').exec;
 
 	var api = {
-    	watch: function (key) {
-        	etcd.set(config.etcd.key1, config.mongod1, function set() {
-            	exec(config.mongod1, function (err, stdout, stderr) {
-                	setTimeout(set, 10);
-            	});
-        	});
+
+    	setup: function (etcd, config, cb) {
+      		etcd.get(config.key, function (err, value) {
+        		etcd.set(config.key, config.mongod, cb);
+      		});
+    	},
+
+    	connect: function (etcd, config, cb) {
+      		etcd.get(config.key, function (err, value) {
+          		etcd.set(config.key, config.mongod, function() {
+              		exec(config.mongod, cb);
+          		});
+      		});
+    	},
+
+    	notify: function (etcd, config, cb) {
+      		etcd.get(config.key, function (err, value) {
+        		etcd.del(config.key, cb);
+      		});
     	}
 	}
 
 	module.exports = api;
 
-해당 코드는 app.js에서 실행할 것이기 때문에 module.exports를 잊지 않는다.
+위의 코드는 **setup**, **connect**, **notify**, 3개의 함수로 이루어져있다.
 
-	var api = require('./watcher'),
-		config = require('config');
-		
-	console.log('watcher start');
-	api.watch(config.etcd.key1);
+1. connect -> 서버에 Key를 조회하고서 결과에 따라 새로운 Key:Value를 생성한다.
+2. notify -> MongoDB 서버가 Down된 것을 감지한 후, etcd에 있던 설정을 바꾸는 역할을 한다. 이것을 통해 Watcher Instance에서는 MongoDB가 Down된 것을 알아차리고 서버를 재가동한다.
+3. setup -> MongoDB 서버를 재가동한 후, 새로운 서버 설정을 etcd에 생성한다.
 
-**sudo node app**으로 서버를 실행시킨다. 그 후에 **ps aux | grep mongod**를 실행하여 mongod 프로세스를 확인해보자.
+
+이제 watcher.js 코드를 작성해본다. 
+
+	$ watcher.js
+	
+	var Etcd = require('node-etcd'),
+    exec = require('child_process').exec,
+    config = require('./config');
+
+	var etcd = new Etcd();
+
+	console.log('Etcd : Watcher started');
+
+	var watcher = {};
+	watcher.machine1 = etcd.watcher(config.etcd.replSet1.key);
+	watcher.machine2 = etcd.watcher(config.etcd.replSet2.key);
+	watcher.machine3 = etcd.watcher(config.etcd.replSet3.key);
+
+	watcher.machine1.on('delete', function set (data) {
+		console.log("delete : " + data);
+		exec(config.etcd.replSet1.mongod, function (err, stdout, stderr) {
+			console.log('etcd -> reloaded mongodb server port : 20000')
+			setTimeout(set, 1);
+		});
+	});		
+
+	watcher.machine2.on('delete', function set (data) {
+		console.log("delete : " + data);
+		exec(config.etcd.replSet2.mongod, function (err, stdout, stderr) {
+			console.log('etcd -> reloaded mongodb server port : 30000')
+			setTimeout(set, 1);
+		});
+	});	
+
+	watcher.machine3.on('delete', function set (data) {
+		console.log("delete : " + data);
+		exec(config.etcd.replSet3.mongod, function (err, stdout, stderr) {
+			console.log('etcd -> reloaded mongodb server port : 40000')
+			setTimeout(set, 1);
+		});
+	});	
+	
+Watcher가 감시할 Key를 **'watcher.machine1 = etcd.watcher(config.etcd.replSet1.key);'**와 같은 방식으로 초기화해놓는다. (config.etcd.replSet1.key는 config.json에 정의되어있다.) 그 후에 watcher.on()을 이용하여 서버가 Down되면 재가동하는 코드를 넣는다.
+
+	
+**sudo node app**으로 etcd 서버를 실행시킨 후에, **sudo node watcher.js**를 통하여 **Watcher Instance**를 실행한다.
 
 	$ ps aux | grep mongod
 	
-	root 17150 0.5 0.8 2735688 35568 s002 S+ 11:30PM 0:01.93 mongod --port 20000 --dbpath /data/db/replSet1 --replSet db
+	root [process_id] 0.5 0.8 2735688 35568 s002 S+ 11:30PM 0:01.93 mongod --port 20000 --dbpath /data/db/replSet1 --replSet Mongo_study
+	root [process_id] 0.5 0.8 2735688 35568 s002 S+ 11:30PM 0:01.93 mongod --port 30000 --dbpath /data/db/replSet1 --replSet Mongo_study
+	root [process_id] 0.5 0.8 2735688 35568 s002 S+ 11:30PM 0:01.93 mongod --port 40000 --dbpath /data/db/replSet1 --replSet Mongo_study
 	
 정상적으로 MongoDB 서버가 작동 중인 것을 확인할 수 있다. 이제 강제적으로 프로세스를 Down 시켜본 후, MongoDB 서버가 복구되는 것을 확인해보자.
 
@@ -123,10 +208,14 @@ Key에 해당하는 Value가 출력된다. 이제 따로 config에 설정들을 
 	
 	$ ps aux | grep mongod
 	
-	root 17892 0.7 1.2 2726472 50880 s002 S+ 11:41PM 0:00.10 mongod --port 20000 --dbpath /data/db/replSet1 --replSet db
+	root [process_id] 0.5 0.8 2735688 35568 s002 S+ 11:30PM 0:01.93 mongod --port 20000 --dbpath /data/db/replSet1 --replSet Mongo_study
+	root [process_id] 0.5 0.8 2735688 35568 s002 S+ 11:30PM 0:01.93 mongod --port 30000 --dbpath /data/db/replSet1 --replSet Mongo_study
+	root [process_id] 0.5 0.8 2735688 35568 s002 S+ 11:30PM 0:01.93 mongod --port 40000 --dbpath /data/db/replSet1 --replSet Mongo_study
 	
 **위의 과정을 통하여 MongoDB 서버가 다시 정상적으로 복구되는 모습을 확인할 수 있다.** 이러한 자동화 시스템을 구축하지않는다면 개발자는 밤에 일어나서 수동적으로 복구를 해야한다.
 
-여러 서버를 복구하기 위해서는 따로 클러스터를 구성하도록 한다.
+##Result
+
+Apache ZooKeeper와 CoreOS etcd 사이에서 무엇이 더 나은지 가늠하기가 어려운 것같다. 나라면 더 많은 문서와 예제가 있는 Apache ZooKeeper를 선택할 것같다.
 
 **etcd를 공부한 내용을 기록한 것입니다. 혹시 틀린 점이 있다면 과감히 말씀해주세요. 다시 고치도록 하겠습니다.**

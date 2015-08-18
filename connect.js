@@ -4,13 +4,13 @@ var Etcd = require('node-etcd'),
 var api = {
 
     setup: function (etcd, config, cb) {
-      etcd.get(config.key, function (err, value) {
+      etcd.get(config.key, {recursive: true}, function (err, value) {
         etcd.set(config.key, config.mongod, cb);
       });
     },
 
     connect: function (etcd, config, cb) {
-      etcd.get(config.key, function (err, value) {
+      etcd.get(config.key, {recursive: true}, function (err, value) {
           etcd.set(config.key, config.mongod, function() {
               exec(config.mongod, cb);
           });
@@ -18,8 +18,8 @@ var api = {
     },
 
     notify: function (etcd, config, cb) {
-      etcd.get(config.key, function (err, value) {
-        etcd.del(config.key, '', cb);
+      etcd.get(config.key, {recursive: true}, function (err, value) {
+        etcd.set(config.key, '', cb);
       });
     }
 }
